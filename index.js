@@ -8,9 +8,28 @@ const TOKEN = process.env.TOKEN;
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { DisTube } = require('distube');
 
 // Create a new client instance that will make requests to Discord API
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+
+const disTube = new DisTube(client, {
+	joinNewVoiceChannel: true,
+});
+
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+for (const file of eventFiles) {
+	const filePath = path.join(eventsPath, file);
+	const event = require(filePath);
+	if (event.once) {
+		client.once(event.name, (...args) => event.execute(...args));
+	}
+	else {
+		client.on(event.name, (...args) => event.execute(...args));
+	}
+}
 
 client.commands = new Collection();
 
@@ -61,3 +80,7 @@ client.on(Events.InteractionCreate, async interaction => {
 		}
 	}
 });
+
+module.exports = {
+	disTube,
+};
